@@ -1,33 +1,39 @@
 Status: this is a rough draft, intended to get some ideas out there. 
 
+Missing: how to run on top of HTTP/2. Possibly the structure or semantics of publisher name strings.
+Might be removed: extension support.
+Need to choose serialization method (protobuf, msgpack, other?)
+
 ## Transport assumptions
 
-A supporting transport must be:
+A supporting transport must be similar to a streaming socket:
 
 1. Bidirectional and full-duplex
 2. An octet stream, i.e. all octet values may be sent unencoded
-3. Ordered delivery: an implementation may map protocol messages to some features of the underlying transport (e.g. 0mq messages), but the messages must arrive in the same order as they were sent
+3. Ordered delivery: an implementation may map protocol messages to some features of the underlying transport (e.g. [Ømq](http://zeromq.org/) messages), but the messages must arrive in the same order as they were sent
 
-Definitely supported transports include TCP, TLS (over TCP), WebSockets, and local pipes. HTTP/2 should be supported, but may require a dedicated specification for implementing this protocol.
+Definitely supported transports include TCP, TLS (over TCP), WebSockets, and most socket-like objects (e.g. pipes). HTTP/2 will be supported, but may require a dedicated specification for implementing this protocol.
 
 ## Message framing
 
-Message framing will use protobuf. The full complexity of protobuf may not be needed today, but future protocol extensions might benefit. Also, an implementation might use a protobuf description of the published messages to decode both the framing and the messages using the same parser.
+An existing serialization format should be used. Current candidates are [Protocol Buffers](https://github.com/google/protobuf/) (which is slightly less space efficient), [MessagePack](http://msgpack.org/) (whose Scala implementation may not be as good as the others), and possibly [Thrift](https://thrift.apache.org/) (with which I'm less familiar). 
 
-A message frame begins with a message type, which is a varint, followed by its contents. Some messages are size-delimited, others are fixed-size.
+The serialization format should be fast and space-efficient. It does not need to be self-describing, since the message types and their structures are fully specified in the protocol. It needs to have the types boolean, string / byte array (length-prefixed), and varint (an integer encoded using 1 or more bytes depending on its value).
+
+The full complexity of these formats may not be needed today, but future protocol extensions might benefit. Also, an implementation might encode the published elements using the same format and decode both the framing and the messages using the same parser.
+
+Each message (frame) begins with a message type, which is a varint, followed by its contents. Messages are self-delimiting, because their structure is known from their type, and all fields are either of fixed size, self-delimited varints, or length-prefixed strings or byte arrays.
 
 ## Protocol negotiation
 
-An `Id` is a varint.
-
 The protocol is versioned and supports future extensions. The client (i.e. the side that opened the connection) and the server do a loose handshake:
 
-    --> clientHello(version: varint, extensions: List[Id])
-    <-- serverHello(version: varint, extensions: List[Id])
+    --> clientHello(version: varint, extensions: Array[Id])
+    <-- serverHello(version: varint, extensions: Array[Id])
     
 This is a 'loose' handshake because the server doesn't have to wait for the `clientHello` before sending its `serverHello`. 
     
-The protocol version is currently version 0. If either side receives a hello message with a version it doesn't support, it MUST send a `goodbye` message and close the connection. The transport mapping (e.g. HTTP Content-Type, or TCP port number) SHOULD change in future versions when the protocol changes incompatibly and the version number increases.
+The protocol version is currently version 0. If either side receives a hello message with a version it doesn't support, it MUST send a `goodbye` message (defined below) and close the connection. When future versions of the protocol introduce incompatible changes and increment the version number, transports SHOULD indicate the incompatibility when suitable, e.g. by changing the HTTP Content-Type or TCP port number).
     
 Extension to the protocol specify optional or future behaviors. 
  1. If an extension defines a new message type not described in this specification, that message MUST NOT be sent before receiving a hello from the other side confirming that it supports that extension. 
@@ -37,7 +43,7 @@ The client can optimistically send more messages after the `clientHello` without
 
 ## The Reactive Streams core protocol
 
-Let type Id = varint. The basic RS signalling is:
+The basic RS signalling is:
 
     --> subscribe(publisher: String, subscriber: Id, initialDemand: Long = 0)
     --> request(subscriber: Id, demand: Long)
@@ -59,7 +65,7 @@ After a subscription is closed, its Id can be reused, to prevent Ids from growin
 
 ## Packed messaging
 
-In typical use, the most common messages by far are `onNext`. The overhead per message is typically 1 byte (message code) +  1-2 bytes (subscriber id) + 2-3 bytes (message length) = 4-6 bytes total. When the message type is very small (e.g. an int), this overhead can be greater than the payload size. 
+In typical use, the most common messages by far are `onNext`. The overhead per message is typically 1 byte (message code) +  1-2 bytes (subscriber id) + 1-3 bytes (payload length) = 3-6 bytes total. When the message type is very small (e.g. an int), the overhead can be 100% or more.
 
 To reduce the overhead, the publisher can optionally declare that all stream elements will have a fixed size by setting the `subscribed.elementSize` field to a value greater than zero:
 
@@ -82,7 +88,7 @@ When an element is split, the publisher will send one or more `onNextPart` messa
 
 `element` is an Id assigned by the Publisher; messages with the same `element` value, in the same stream, will be joined by the Subscriber. The order of the parts is that in which they were sent and received (the transport is required to provide ordered delivery).
 
-The subscriber driver will typically join the parts transparently and deliver a single message to the application.
+The subscriber's driver will typically join the parts transparently and deliver a single message to the application.
 
 ## Closing the connection
 

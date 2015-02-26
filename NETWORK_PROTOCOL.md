@@ -1,5 +1,15 @@
 Status: this is a rough draft, intended to get some ideas out there. 
 
+## Transport assumptions
+
+A supporting transport must be:
+
+1. Bidirectional and full-duplex
+2. An octet stream, i.e. all octet values may be sent unencoded
+3. Ordered delivery: an implementation may map protocol messages to some features of the underlying transport (e.g. 0mq messages), but the messages must arrive in the same order as they were sent
+
+Definitely supported transports include TCP, TLS (over TCP), WebSockets, and local pipes. HTTP/2 should be supported, but may require a dedicated specification for implementing this protocol.
+
 ## Message framing
 
 Message framing will use protobuf. The full complexity of protobuf may not be needed today, but future protocol extensions might benefit. Also, an implementation might use a protobuf description of the published messages to decode both the framing and the messages using the same parser.
@@ -25,7 +35,7 @@ Extension to the protocol specify optional or future behaviors.
     
 The client can optimistically send more messages after the `clientHello` without waiting for the `serverHello`. If it eventually receieves a `serverHello` with a different protocol version, it must consider that its messages were discarded. Future protocol versions will not be backward-compatible with version 0, in the sense that if a server multiple versions (e.g. both version 0 and some future version 1), it must wait for the `clientHello` and then send a `serverHello` with a version number matching the client's.
 
-## The Reactive Streams protocol
+## The Reactive Streams core protocol
 
 Let type Id = varint. The basic RS signalling is:
 
@@ -61,6 +71,19 @@ The publisher can then send not just `onNext` messages but also `onNextPacked` m
     
 Packing does not help if new data becomes available very frequently and must not be delayed before being sent. A typical example is a ticker source. It also can't be done if the client doesn't provide enough demand.
 
+## Split messaging
+
+A very large `onNext` message might significantly delay messages from other streams. Therefore, large stream elements can be optionally split across multiple messages. Publishers MAY split elements; subscribers MUST support this.
+
+When an element is split, the publisher will send one or more `onNextPart` messages, followed by a single `onNextLastPart`:
+
+    <-- onNextPart(subscriber: Id, element: Id, data: bytes)
+    <-- onNextLastPart(subscriber: Id, element: Id, data: bytes)
+
+`element` is an Id assigned by the Publisher; messages with the same `element` value, in the same stream, will be joined by the Subscriber. The order of the parts is that in which they were sent and received (the transport is required to provide ordered delivery).
+
+The subscriber driver will typically join the parts transparently and deliver a single message to the application.
+
 ## Closing the connection
 
 When the underlying transport is closed, both sides should release all related resources. This protocol version does not specify reusing previously negotiated state after reconnecting.
@@ -71,4 +94,3 @@ The orderly way of closing a connection is to send a `goodbye` message, wait for
     <-- goodbye(reason: String)
     
 Sending `goodbye` implicitly closes all open streams, equivalently to receiving `cancel` or `onError` messages.
-

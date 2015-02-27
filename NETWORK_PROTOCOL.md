@@ -48,7 +48,7 @@ The basic RS signalling is:
     --> subscribe(publisher: String, subscriber: Id, initialDemand: Long = 0)
     --> request(subscriber: Id, demand: Long)
     --> cancel(subscriber: Id)
-    <-- subscribed(subscriber: Id, elementSize: varint = 0) // For elementSize != 0, see the next section
+    <-- onSubscribe(subscriber: Id, elementSize: varint = 0) // For elementSize != 0, see the next section
     <-- onNext(subscriber: Id, element: bytes) 
     <-- onComplete(subscriber: Id)
     <-- onError(subscriber: Id, error: String)
@@ -59,7 +59,7 @@ Unlike in RS, there is no separate Subscription object; the subscriber Id identi
 
 The publisher String needs to be parsed by the recipient; it is not described by this specification. [Could be added?]
 
-The field `subscribed.elementSize`, if nonzero, indicates the fixed size of the elements that will be published in this stream. In fixed-size mode, the `onNext.element` field is not length-prefixed. This saves space when the messages are very small, such as individual ints.
+The field `onSubscribe.elementSize`, if nonzero, indicates the fixed size of the elements that will be published in this stream. In fixed-size mode, the `onNext.element` field is not length-prefixed. This saves space when the messages are very small, such as individual ints.
 
 After a subscription is closed, its Id can be reused, to prevent Ids from growing without limit. The subscriber MAY reuse an Id in a `subscribe` message after it has sent `cancel` or received `onComplete` or `onError` for that Id. If it does so, it MUST guarantee that the publisher will not receive messages meant for the previous subscription with that Id after it receives the second `subscribe` message.
 
@@ -67,9 +67,9 @@ After a subscription is closed, its Id can be reused, to prevent Ids from growin
 
 In typical use, the most common messages by far are `onNext`. The overhead per message is typically 1 byte (message code) +  1-2 bytes (subscriber id) + 1-3 bytes (payload length) = 3-6 bytes total. When the message type is very small (e.g. an int), the overhead can be 100% or more.
 
-To reduce the overhead, the publisher can optionally declare that all stream elements will have a fixed size by setting the `subscribed.elementSize` field to a value greater than zero:
+To reduce the overhead, the publisher can optionally declare that all stream elements will have a fixed size by setting the `onSubscribe.elementSize` field to a value greater than zero:
 
-    <-- subscribed(subscriber: Id, elementSize: varint)
+    <-- onSubscribe(subscriber: Id, elementSize: varint)
 
 The publisher can then send not just `onNext` messages but also `onNextPacked` messages:
 

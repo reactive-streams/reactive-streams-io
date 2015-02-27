@@ -1,0 +1,109 @@
+subprojects {
+    apply plugin: "java"
+    apply plugin: "osgi"
+
+    group = "org.reactivestreamsio"
+    version = "1.0.0.M1"
+
+    sourceCompatibility = 1.6
+    targetCompatibility = 1.6
+
+    tasks.withType(JavaCompile) {
+        configure(options) {
+            compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+            encoding = "UTF-8"
+        }
+    }
+
+    tasks.withType(Javadoc) {
+        configure(options) {
+            encoding "UTF-8"
+            docEncoding "UTF-8"
+            charSet "UTF-8"
+            linkSource true
+            noTimestamp true
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    jar {
+        manifest {
+            instruction "Bundle-Vendor", "Reactive Streams I/O SIG"
+            instruction "Bundle-Description", "Reactive Streams I/O API"
+            instruction "Bundle-DocURL", "http://reactive-streams.org"
+        }
+    }
+
+    if (name in ["reactive-streams-io", "reactive-streams-io-examples"]) {
+        apply plugin: "maven"
+        apply plugin: "signing"
+
+        dependencies {
+            compile 'org.reactivestreams:reactive-streams:1.0.0.RC3'
+        }
+
+        signing {
+            sign configurations.archives
+            required { gradle.taskGraph.hasTask(uploadArchives) }
+        }
+        task sourcesJar(type: Jar) {
+            classifier "sources"
+            from sourceSets.main.allSource
+        }
+
+        task javadocJar(type: Jar) {
+            classifier "javadoc"
+            from javadoc
+        }
+
+        artifacts {
+            archives sourcesJar, javadocJar
+        }
+
+        uploadArchives {
+            repositories {
+                mavenDeployer {
+                    repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2")
+                }
+            }
+        }
+
+        tasks.withType(Upload) {
+            repositories.withType(MavenResolver) {
+                it.beforeDeployment { signing.signPom(it) }
+                it.pom.whenConfigured { pom ->
+                    pom.project {
+                        url "http://www.reactive-streams.org/"
+                        inceptionYear "2014"
+
+                        scm {
+                            url "git@github.com:reactive-streams/reactive-streams-io.git"
+                            connection "scm:git:git@github.com:reactive-streams/reactive-streams-io.git"
+                        }
+
+                        licenses {
+                            license {
+                                name "CC0"
+                                url "http://creativecommons.org/publicdomain/zero/1.0/"
+                                distribution "repo"
+                            }
+                        }
+
+                        developers {
+                            developer {
+                                id "reactive-streams-io-sig"
+                                name "Reactive Streams I/O SIG"
+                                url "http://www.reactive-streams.org/"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        uploadArchives.enabled = false
+    }
+}

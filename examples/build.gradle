@@ -1,0 +1,4 @@
+description = "reactive-streams-io-examples"
+dependencies {
+    compile project(':reactive-streams-io')
+}

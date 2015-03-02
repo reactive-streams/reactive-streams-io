@@ -22,14 +22,14 @@ The serialization format should be fast and space-efficient. It does not need to
 
 The full complexity of these formats may not be needed today, but future protocol extensions might benefit. Also, an implementation might encode the published elements using the same format and decode both the framing and the messages using the same parser.
 
-Each message (frame) begins with a message type, which is a varint, followed by its contents. Messages are self-delimiting, because their structure is known from their type, and all fields are either of fixed size, self-delimited varints, or length-prefixed strings or byte arrays.
+Each message (frame) begins with a message type, which is a single byte, followed by its contents. Messages are self-delimiting, because their structure is known from their type, and all fields are either of fixed size, self-delimited varints, or length-prefixed strings or byte arrays.
 
 ## Protocol negotiation
 
 The protocol is versioned and supports future extensions. The client (i.e. the side that opened the connection) and the server do a loose handshake:
 
-    --> clientHello(version: varint, extensions: Array[Id])
-    <-- serverHello(version: varint, extensions: Array[Id])
+    --> clientHello(version: byte, extensions: Array[Id])
+    <-- serverHello(version: byte, extensions: Array[Id])
     
 This is a 'loose' handshake because the server doesn't have to wait for the `clientHello` before sending its `serverHello`. 
     

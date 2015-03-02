@@ -1,9 +1,10 @@
 Status: this is a rough draft, intended to get some ideas out there. 
 
-Missing: 
+Missing things which might be added: 
 - How to run on top of HTTP/2 (but see #6).
 - Possibly the structure or semantics of publisher name strings.
 - Need to choose serialization method (protobuf, msgpack, other?)
+- Support for resuming a broken connection without losing subscription state
 
 Possibly not needed and could be be removed: extension support.
 

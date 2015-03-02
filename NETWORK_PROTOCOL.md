@@ -1,8 +1,11 @@
 Status: this is a rough draft, intended to get some ideas out there. 
 
-Missing: how to run on top of HTTP/2. Possibly the structure or semantics of publisher name strings.
-Might be removed: extension support.
-Need to choose serialization method (protobuf, msgpack, other?)
+Missing: 
+- How to run on top of HTTP/2 (but see #6).
+- Possibly the structure or semantics of publisher name strings.
+- Need to choose serialization method (protobuf, msgpack, other?)
+
+Possibly not needed and could be be removed: extension support.
 
 ## Transport assumptions
 

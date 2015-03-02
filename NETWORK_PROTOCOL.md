@@ -18,7 +18,9 @@ Definitely supported transports include TCP, TLS (over TCP), WebSockets, and mos
 
 An existing serialization format should be used. Current candidates are [Protocol Buffers](https://github.com/google/protobuf/) (which is slightly less space efficient), [MessagePack](http://msgpack.org/) (whose Scala implementation may not be as good as the others), and possibly [Thrift](https://thrift.apache.org/) (with which I'm less familiar). 
 
-The serialization format should be fast and space-efficient. It does not need to be self-describing, since the message types and their structures are fully specified in the protocol. It needs to have the types boolean, string / byte array (length-prefixed), and varint (an integer encoded using 1 or more bytes depending on its value).
+The serialization format should be fast and space-efficient. It does not need to be self-describing, since the message types and their structures are fully specified in the protocol. It needs to have the types boolean, byte, string / byte array (length-prefixed), and varint (an integer encoded using 1 or more bytes depending on its value).
+
+The type alias `Id` used below is a varint which serves to uniquely identify something.
 
 The full complexity of these formats may not be needed today, but future protocol extensions might benefit. Also, an implementation might encode the published elements using the same format and decode both the framing and the messages using the same parser.
 
@@ -30,6 +32,8 @@ The protocol is versioned and supports future extensions. The client (i.e. the s
 
     --> clientHello(version: byte, extensions: Array[Id])
     <-- serverHello(version: byte, extensions: Array[Id])
+    
+An `Id`, as noted above, is a varint. An Array length-prefixed by a varint.
     
 This is a 'loose' handshake because the server doesn't have to wait for the `clientHello` before sending its `serverHello`. 
     

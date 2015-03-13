@@ -37,18 +37,24 @@ The protocol is versioned and supports future extensions. The client (i.e. the s
     --> clientHello(version: byte, extensions: Array[Id])
     <-- serverHello(version: byte, extensions: Array[Id])
     
-An `Id`, as noted above, is a varint. An Array length-prefixed by a varint.
+An `Id`, as noted above, is a varint. An Array is length-prefixed by a varint.
     
 This is a 'loose' handshake because the server doesn't have to wait for the `clientHello` before sending its `serverHello`. 
-    
+
+### The protocol version
+
 The protocol version is currently version 0. If either side receives a hello message with a version it doesn't support, it MUST send a `goodbye` message (defined below) and close the connection. When future versions of the protocol introduce incompatible changes and increment the version number, transports SHOULD indicate the incompatibility when suitable, e.g. by changing the HTTP Content-Type or TCP port number).
-    
-Extension to the protocol specify optional or future behaviors. 
- 1. If an extension defines a new message type not described in this specification, that message MUST NOT be sent before receiving a hello from the other side confirming that it supports that extension. 
- 2. If an extension changes the semantics of message types defined in this specification or by another extension, the modified behavior MUST be negotiated by at least one of the parties sending, and the other acknowledging, a message (defined by the extension being discussed) that declares the new behavior as active. A party supporting such an extension SHOULD NOT send messages whose semantics are modified by it before this negotiation is completed (i.e. the acknowledgement message is received).
     
 The client can optimistically send more messages after the `clientHello` without waiting for the `serverHello`. If it eventually receieves a `serverHello` with a different protocol version, it must consider that its messages were discarded. Future protocol versions will not be backward-compatible with version 0, in the sense that if a server multiple versions (e.g. both version 0 and some future version 1), it must wait for the `clientHello` and then send a `serverHello` with a version number matching the client's.
 
+### Protocol extensions
+
+Extensions allow for the protocol to be extended in the future in backward-compatible ways, without changing the protocol version. 
+
+ 1. The set of extensions in use, or available for use (for extensions that define optional behaviors), is the intersection of the extensions listed in both `hello` messages. 
+ 2. Extensions MAY define new message types with new semantics. The client MUST NOT send messages of a new message type defined in an extension until it receives the `ServerHello` and confirms that the server supports the extension. 
+ 3. Extensions MAY change the semantics of existing message types (e.g. to add transparent compression to payloads). Such modified behavior MUST be negotiated by one of the parties sending, and the other acknowledging, a message (defined by the extension being discussed) that declares the new behavior as active. A party supporting such an extension SHOULD NOT send messages whose semantics are modified by it before this secondary negotiation is completed, due to potential for confusion as to whether or not the modified semantics are in effect.
+    
 ## The Reactive Streams core protocol
 
 The basic RS signalling is:

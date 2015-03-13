@@ -91,6 +91,10 @@ The first variant encodes each element as a length prefix followed by that many 
 
 When sending multiple elements, the server MUST NOT use the Content-Type or Content-Encoding headers to indicate the type or encoding of each individual element (since that would be against the HTTP spec). Stream publishers SHOULD either document the (single) content type of each element in their stream, or make the element payloads self-describing.
 
+If a batched message is interrupted by a transport-level error (e.g. a network problem), there is no way for the server to know which batched elements, if any, were received by the client. Therefore, in case of an error, the server MUST NOT update its remaining demand count for the subscription, and on the next client request it MUST resend all of the elements in the batch. The server MAY batch them differently or not at all when resending. 
+
+The client MUST either discard any elements it receives twice due to the server resending them, or not process them until it receives a complete batched response safely. The first option can be implemented by counting elements starting from the first one in the batch whose delivery failed.
+
 #### 2.2 Deferring stream elements
 
 When the server has no elements ready to publish to the stream, the request stalls. When using SSE / long polling, such a request may eventually time out, depending on network middleware and HTTP implementations used. 

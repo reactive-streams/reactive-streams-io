@@ -111,6 +111,6 @@ When the underlying transport is closed, both sides should release all related r
 The orderly way of closing a connection is to send a `goodbye` message, wait for acknowledgement and then close the underlying connection:
 
     --> goodbye(reason: String)
-    <-- goodbye(reason: String)
+    <-- goodbyeAck(message: String)
     
 Sending `goodbye` implicitly closes all open streams, equivalently to receiving `cancel` or `onError` messages.
